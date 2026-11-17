@@ -4,14 +4,12 @@ import { sampleRooms, sampleBookings } from '@/data/sampleData';
 import {
   checkAvailability,
   timeToMinutes,
-  minutesToTime,
+  MAX_DURATION,
 } from '@/utils/bookingLogic';
 import RoomList from '@/components/RoomList';
 import Schedule from '@/components/Schedule';
 import VerdictBanner from '@/components/VerdictBanner';
 import { Building2, Clock, ArrowRight, CheckCheck } from 'lucide-react';
-
-const MAX_DURATION = 120;
 
 function App() {
   const [rooms] = useState<Room[]>(sampleRooms);
@@ -33,13 +31,17 @@ function App() {
     [bookings, selectedRoomId]
   );
 
-  const currentMinutes = timeToMinutes(currentTime) ?? -1;
-
   function handleCheck() {
     setFormError(null);
+    const currentMinutes = timeToMinutes(currentTime);
     const start = timeToMinutes(startTime);
     const end = timeToMinutes(endTime);
 
+    if (currentMinutes === null) {
+      setVerdict(null);
+      setFormError('Please enter a valid current time in HH:MM (24-hour) format.');
+      return;
+    }
     if (start === null || end === null) {
       setVerdict(null);
       setFormError('Please enter valid times in HH:MM (24-hour) format.');
