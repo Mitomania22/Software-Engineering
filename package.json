@@ -1,0 +1,11 @@
+{
+  "name": "project",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix week11",
+    "build": "npm run build --prefix week11",
+    "preview": "npm run preview --prefix week11",
+    "test": "npm run test --prefix week11",
+    "typecheck": "npm run typecheck --prefix week11"
+  }
+}
