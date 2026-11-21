@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Room, Booking, Verdict } from '@/types';
 import { sampleRooms, sampleBookings } from '@/data/sampleData';
 import {
@@ -6,10 +6,16 @@ import {
   timeToMinutes,
   MAX_DURATION,
 } from '@/utils/bookingLogic';
+import { createExplainer, type ExplanationState } from '@/utils/explainClient';
 import RoomList from '@/components/RoomList';
 import Schedule from '@/components/Schedule';
 import VerdictBanner from '@/components/VerdictBanner';
-import { Building2, Clock, ArrowRight, CheckCheck } from 'lucide-react';
+import ExplanationPanel from '@/components/ExplanationPanel';
+import { Building2, Clock, ArrowRight, CheckCheck, Sparkles } from 'lucide-react';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const canExplain = Boolean(supabaseUrl && supabaseAnonKey);
 
 function App() {
   const [rooms] = useState<Room[]>(sampleRooms);
@@ -20,6 +26,9 @@ function App() {
   const [currentTime, setCurrentTime] = useState('08:00');
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<ExplanationState>({ status: 'idle' });
+  const [explainNonce, setExplainNonce] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   const selectedRoom = useMemo(
     () => rooms.find((r) => r.id === selectedRoomId) ?? null,
@@ -31,8 +40,44 @@ function App() {
     [bookings, selectedRoomId]
   );
 
+  const explain = useMemo(
+    () =>
+      canExplain
+        ? createExplainer(supabaseUrl as string, supabaseAnonKey as string)
+        : null,
+    []
+  );
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  useEffect(() => {
+    if (!explain || !verdict || !selectedRoom) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setExplanation({ status: 'loading' });
+    explain(
+      selectedRoom,
+      { start: timeToMinutes(startTime) ?? 0, end: timeToMinutes(endTime) ?? 0, current: timeToMinutes(currentTime) ?? 0 },
+      verdict,
+      bookings,
+      controller.signal
+    )
+      .then((text) => {
+        if (!controller.signal.aborted) setExplanation({ status: 'ok', explanation: text, model: 'mock-llm-v1' });
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setExplanation({
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Could not generate the explanation.',
+        });
+      });
+  }, [explain, verdict, selectedRoom, bookings, startTime, endTime, currentTime, explainNonce]);
+
   function handleCheck() {
     setFormError(null);
+    setExplanation({ status: 'idle' });
     const currentMinutes = timeToMinutes(currentTime);
     const start = timeToMinutes(startTime);
     const end = timeToMinutes(endTime);
@@ -56,8 +101,10 @@ function App() {
   }
 
   function handleReset() {
+    abortRef.current?.abort();
     setVerdict(null);
     setFormError(null);
+    setExplanation({ status: 'idle' });
   }
 
   const durationLabel = useMemo(() => {
@@ -205,8 +252,23 @@ function App() {
               </div>
             </div>
 
-            {/* Verdict */}
+            {/* Verdict — authoritative, deterministic result */}
             <VerdictBanner verdict={verdict} />
+
+            {/* Mock AI explanation — clearly secondary, generated server-side */}
+            {verdict && canExplain && (
+              <ExplanationPanel
+                state={explanation}
+                onRetry={() => setExplainNonce((n) => n + 1)}
+              />
+            )}
+
+            {verdict && !canExplain && (
+              <p className="flex items-center gap-2 text-xs text-gray-400">
+                <Sparkles className="h-3.5 w-3.5" />
+                Mock AI explanation is unavailable — the service address is not configured.
+              </p>
+            )}
 
             {/* Schedule for selected room */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
