@@ -6,11 +6,9 @@ import {
   timeToMinutes,
   MAX_DURATION,
 } from '@/utils/bookingLogic';
-import { fetchExplanation, type ExplanationState } from '@/utils/explain';
 import RoomList from '@/components/RoomList';
 import Schedule from '@/components/Schedule';
 import VerdictBanner from '@/components/VerdictBanner';
-import ExplanationCard from '@/components/ExplanationCard';
 import { Building2, Clock, ArrowRight, CheckCheck } from 'lucide-react';
 
 function App() {
@@ -21,7 +19,6 @@ function App() {
   const [endTime, setEndTime] = useState('10:00');
   const [currentTime, setCurrentTime] = useState('08:00');
   const [verdict, setVerdict] = useState<Verdict | null>(null);
-  const [explanation, setExplanation] = useState<ExplanationState>({ status: 'idle' });
   const [formError, setFormError] = useState<string | null>(null);
 
   const selectedRoom = useMemo(
@@ -34,12 +31,6 @@ function App() {
     [bookings, selectedRoomId]
   );
 
-  function handleReset() {
-    setVerdict(null);
-    setExplanation({ status: 'idle' });
-    setFormError(null);
-  }
-
   function handleCheck() {
     setFormError(null);
     const currentMinutes = timeToMinutes(currentTime);
@@ -48,32 +39,25 @@ function App() {
 
     if (currentMinutes === null) {
       setVerdict(null);
-      setExplanation({ status: 'idle' });
       setFormError('Please enter a valid current time in HH:MM (24-hour) format.');
       return;
     }
     if (start === null || end === null) {
       setVerdict(null);
-      setExplanation({ status: 'idle' });
       setFormError('Please enter valid times in HH:MM (24-hour) format.');
       return;
     }
     if (!selectedRoom) {
       setVerdict(null);
-      setExplanation({ status: 'idle' });
       setFormError('Please select a room.');
       return;
     }
-    const nextVerdict = checkAvailability(start, end, currentMinutes, selectedRoom, bookings);
-    setVerdict(nextVerdict);
-    setExplanation({ status: 'loading' });
-    fetchExplanation({
-      verdict: { ...nextVerdict, roomId: selectedRoom.id },
-      roomName: selectedRoom.name,
-      startMinutes: start,
-      endMinutes: end,
-      bookings,
-    }).then(setExplanation);
+    setVerdict(checkAvailability(start, end, currentMinutes, selectedRoom, bookings));
+  }
+
+  function handleReset() {
+    setVerdict(null);
+    setFormError(null);
   }
 
   const durationLabel = useMemo(() => {
@@ -223,9 +207,6 @@ function App() {
 
             {/* Verdict */}
             <VerdictBanner verdict={verdict} />
-
-            {/* Mock AI explanation — display only, never decides availability */}
-            <ExplanationCard state={explanation} />
 
             {/* Schedule for selected room */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
