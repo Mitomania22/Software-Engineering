@@ -1,4 +1,0 @@
-project_id = "smart-campus-week11"
-
-[functions.explain-availability]
-verify_jwt = false
