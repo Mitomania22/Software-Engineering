@@ -4,14 +4,12 @@ import { sampleRooms, sampleBookings } from '@/data/sampleData';
 import {
   checkAvailability,
   timeToMinutes,
-  minutesToTime,
+  MAX_DURATION,
 } from '@/utils/bookingLogic';
 import RoomList from '@/components/RoomList';
 import Schedule from '@/components/Schedule';
 import VerdictBanner from '@/components/VerdictBanner';
 import { Building2, Clock, ArrowRight, CheckCheck } from 'lucide-react';
-
-const MAX_DURATION = 120;
 
 function App() {
   const [rooms] = useState<Room[]>(sampleRooms);
@@ -33,27 +31,20 @@ function App() {
     [bookings, selectedRoomId]
   );
 
-  const parsedTimes = useMemo(
-    () => ({
-      current: timeToMinutes(currentTime),
-      start: timeToMinutes(startTime),
-      end: timeToMinutes(endTime),
-    }),
-    [currentTime, startTime, endTime]
-  );
-
   function handleCheck() {
     setFormError(null);
-    const { start, end, current } = parsedTimes;
+    const currentMinutes = timeToMinutes(currentTime);
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
 
+    if (currentMinutes === null) {
+      setVerdict(null);
+      setFormError('Please enter a valid current time in HH:MM (24-hour) format.');
+      return;
+    }
     if (start === null || end === null) {
       setVerdict(null);
       setFormError('Please enter valid times in HH:MM (24-hour) format.');
-      return;
-    }
-    if (current === null) {
-      setVerdict(null);
-      setFormError('Please enter a valid current time in HH:MM (24-hour) format.');
       return;
     }
     if (!selectedRoom) {
@@ -61,7 +52,7 @@ function App() {
       setFormError('Please select a room.');
       return;
     }
-    setVerdict(checkAvailability(start, end, current, selectedRoom, bookings));
+    setVerdict(checkAvailability(start, end, currentMinutes, selectedRoom, bookings));
   }
 
   function handleReset() {
@@ -69,9 +60,12 @@ function App() {
     setFormError(null);
   }
 
-  const { start: startMin, end: endMin } = parsedTimes;
-  const durationLabel =
-    startMin !== null && endMin !== null && endMin > startMin ? endMin - startMin : null;
+  const durationLabel = useMemo(() => {
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+    if (start === null || end === null || end <= start) return null;
+    return end - start;
+  }, [startTime, endTime]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/30 to-slate-100 text-gray-900">
