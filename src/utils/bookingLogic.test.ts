@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkAvailability, MAX_DURATION, MINUTES_PER_DAY } from '@/utils/bookingLogic';
+import { checkAvailability, MINUTES_PER_DAY } from '@/utils/bookingLogic';
 import type { Booking, Room } from '@/types';
 import { sampleBookings, sampleRooms } from '@/data/sampleData';
 

@@ -4,14 +4,12 @@ import { sampleRooms, sampleBookings } from '@/data/sampleData';
 import {
   checkAvailability,
   timeToMinutes,
-  minutesToTime,
+  MAX_DURATION,
 } from '@/utils/bookingLogic';
 import RoomList from '@/components/RoomList';
 import Schedule from '@/components/Schedule';
 import VerdictBanner from '@/components/VerdictBanner';
 import { Building2, Clock, ArrowRight, CheckCheck } from 'lucide-react';
-
-const MAX_DURATION = 120;
 
 function App() {
   const [rooms] = useState<Room[]>(sampleRooms);
