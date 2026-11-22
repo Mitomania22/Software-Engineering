@@ -1,4 +1,0 @@
-# Supabase configuration for Bolt projects.
-
-[functions.explain-availability]
-verify_jwt = false
